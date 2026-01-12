@@ -9,10 +9,109 @@ def show_trade_plan():
     st.divider()
 
     discipline_score = 0
-    max_score = 4
+    max_score = 4.5
     trade_state = "WAITING"  # <-- FIX: default state to prevent crash
-
+    
     # =============================
+    # GATE 0 — DIRECTION & CONTEXT
+    # =============================
+
+    st.subheader("📆 Chart Analysis Preparation")
+
+    # ---------- WEEKLY ----------
+    st.markdown("### Weekly Context")
+
+    weekly_trend = st.radio(
+        "What is the weekly trend identified?",
+        ["", "Uptrend", "Downtrend"],
+        index=0,
+        horizontal=False,
+        key="weekly_trend"
+        
+    )
+
+    weekly_zones = st.radio(
+        "Are weekly zones drawn correctly?",
+        [
+            "",
+            "Yes — zones are marked correctly",
+            "No weekly zones present"
+        ],
+        index=0,
+        key="weekly_zones"
+    )
+
+    if weekly_zones.startswith("Yes"):
+        if weekly_trend == "Uptrend":
+            st.info(
+                "🔎 **Weekly zone Check:**\n"
+                "- Mark **prior resistance**\n"
+                "- Start from the zone **closest to price**\n"
+                "- Zone must sit **between the last Higher Low and Higher High**"
+            )
+        else:
+            st.info(
+                "🔎 **Weekly zone Check:**\n"
+                "- Mark **prior support**\n"
+                "- Start from the zone **closest to price**\n"
+                "- Zone must sit **between the last Lower High and Lower Low**"
+            )
+    else: 
+        if weekly_zones.startswith("No"):
+            st.caption("ℹ️ No valid weekly zones — Daily timeframe will guide structure.")
+
+    st.divider()
+
+    # ---------- DAILY ----------
+    st.markdown("### Daily Context")
+
+    daily_trend = st.radio(
+        "What is the daily trend identified?",
+        ["","Uptrend", "Downtrend"],
+        index=0,
+        horizontal=False,
+        key="daily_trend"
+    )
+
+    daily_zones = st.radio(
+        "Are daily zones drawn correctly?",
+        [
+            "",
+            "Yes — zones are marked correctly",
+            "No daily zones present"
+        ],
+        index=0,
+        key="daily_zones"
+    )
+
+    if daily_zones.startswith("Yes"):
+        if daily_trend == "Uptrend":
+            st.info(
+                "🔎 **Daily zone Check:**\n"
+                "- Mark **prior resistance**\n"
+                "- Choose the zone **nearest to current price**\n"
+                "- Zone must sit **between the last Higher Low and Higher High**"
+            )
+        else:
+            st.info(
+                "🔎 **Daily zone Check:**\n"
+                "- Mark **prior support**\n"
+                "- Begin with the zone **closest to price action**\n"
+                "- Zone must sit **between the last Lower High and Lower Low**"
+            )
+    else:
+        if daily_zones.startswith("No"):
+            st.caption("ℹ️ No valid daily zones — H4 may be used if required.")
+            discipline_score += -0.5
+
+    discipline_score += 0.5
+    # ----- Gate 1 Pass Condition -----
+    
+
+   
+
+
+   # =============================
     # GATE 1 — DIRECTION & CONTEXT
     # =============================
     st.subheader("🟦 Gate 1: Direction & Context")
@@ -24,7 +123,7 @@ def show_trade_plan():
     )
 
     daily_bias = st.radio(
-        "Daily structure bias",
+        "What is the daily structure likely to do next?",
         ["", "Continuation (HH / LL)", "Pullback (HL / LH)"],
         index=0
     )
@@ -33,8 +132,8 @@ def show_trade_plan():
         "Higher timeframe traffic (Weekly / Monthly)",
         [
             "",
-            "Aligned – no major levels in the way",
-            "Crowded – major HTF levels nearby"
+            "Aligned – no major zones in the way",
+            "Crowded – major HTF zones nearby"
         ],
         index=0
     )
@@ -53,7 +152,7 @@ def show_trade_plan():
     direction_ok = (
         trade_direction != ""
         and daily_bias != ""
-        and htf_traffic == "Aligned – no major levels in the way"
+        and htf_traffic == "Aligned – no major zones in the way"
         and daily_location != ""
     )
 
@@ -68,9 +167,11 @@ def show_trade_plan():
     # Non-blocking location warnings (impact discipline later)
     if trade_direction == "Long" and daily_location == "Near Daily High":
         st.warning("⚠️ Longing near the daily high increases pullback risk")
+        discipline_score += -0.25
 
     if trade_direction == "Short" and daily_location == "Near Daily Low":
         st.warning("⚠️ Shorting near the daily low risks selling the bottom")
+        discipline_score += -0.25
 
     if daily_location == "Middle of Range":
         st.info("ℹ️ Mid-range entries require conservative stop placement")
@@ -101,7 +202,7 @@ def show_trade_plan():
     )
 
     rr_check = st.radio(
-        "2R or better achievable",
+        "2R or better achievable before the next 1hr to 4hr s/r ?",
         ["", "Yes", "No"],
         index=0
     )
@@ -298,7 +399,7 @@ def show_footer(trade_state, discipline_score, trade_direction=None, daily_bias=
 
     st.divider()
 
-    score_pct = int((discipline_score / 4) * 100)
+    score_pct = int((discipline_score / 4.5) * 100)
 
     st.markdown("### 📊 Trade Plan Discipline")
     st.progress(score_pct)
