@@ -9,7 +9,7 @@ def show_trade_plan():
     st.divider()
 
     discipline_score = 0
-    max_score = 4.5
+    max_score = 5.75
     trade_state = "WAITING"  # <-- FIX: default state to prevent crash
     
     # =============================
@@ -189,11 +189,135 @@ def show_trade_plan():
 
     st.success("✅ Direction & context aligned")
     st.divider()
+    
+    st.markdown("### 🧩 Important Alignment Check")
+    st.caption(
+        "Alignment is not nogotiable — it is a strong confirmation that increase the trade odds.\n\n"
+        "If direction, structure, and higher-timeframe context are not aligned, "
+        "execution quality decreases regardless of setup quality."
+    )
 
     # =============================
-    # GATE 2 — TARGET & STRUCTURE
+    # GATE 1.5 — ALIGNMENT (4H → 1H)
     # =============================
-    st.subheader("🟦 Gate 2: Target & Structure")
+    st.subheader("🟦 Gate 1.5: Alignment")
+
+    st.caption(
+        "Alignment is sequential.\n"
+        "Lower timeframe is evaluated only after higher timeframe aligns."
+    )
+
+    # ---------- 4H STRUCTURE ----------
+    if trade_direction == "Long":
+        h4_structure = st.radio(
+            "4H structure",
+            [
+                "",
+                "Bullish structure intact (HH / HL)",
+                "Fresh bullish BOS / reclaim above resistance",
+                "Not aligned"
+            ],
+            index=0
+        )
+
+        h4_ok = h4_structure in [
+            "Bullish structure intact (HH / HL)",
+            "Fresh bullish BOS / reclaim above resistance"
+        ]
+
+        if not h4_ok:
+            if h4_structure != "":
+                st.warning("⏳ 4H structure not aligned — 1H is not evaluated yet")
+            trade_state = "WAITING"
+            show_footer(trade_state, discipline_score)
+            return
+
+        # ---------- 1H STRUCTURE (ONLY UNLOCKS AFTER 4H) ----------
+        st.markdown("#### 1H Alignment")
+
+        h1_structure = st.radio(
+            "1H structure",
+            [
+                "",
+                "Bullish structure intact",
+                "Bullish BOS / reclaim",
+                "Not aligned"
+            ],
+            index=0
+        )
+
+        h1_ok = h1_structure in [
+            "Bullish structure intact",
+            "Bullish BOS / reclaim"
+        ]
+
+        if not h1_ok:
+            if h1_structure != "":
+                st.warning("⏳ 4H aligned, 1H not yet aligned — wait")
+            trade_state = "WAITING"
+            show_footer(trade_state, discipline_score)
+            return
+
+    else:  # ---------- SHORT LOGIC ----------
+        h4_structure = st.radio(
+            "4H structure",
+            [
+                "",
+                "Bearish structure intact (LL / LH)",
+                "Fresh bearish BOS / loss of support",
+                "Not aligned"
+            ],
+            index=0
+        )
+
+        h4_ok = h4_structure in [
+            "Bearish structure intact (LL / LH)",
+            "Fresh bearish BOS / loss of support"
+        ]
+
+        if not h4_ok:
+            if h4_structure != "":
+                st.warning("⏳ 4H structure not aligned — 1H is not evaluated yet")
+            trade_state = "WAITING"
+            show_footer(trade_state, discipline_score)
+            return
+
+        st.markdown("#### 1H Alignment")
+
+        h1_structure = st.radio(
+            "1H structure",
+            [
+                "",
+                "Bearish structure intact",
+                "Bearish BOS / loss of support",
+                "Not aligned"
+            ],
+            index=0
+        )
+
+        h1_ok = h1_structure in [
+            "Bearish structure intact",
+            "Bearish BOS / loss of support"
+        ]
+
+        if not h1_ok:
+            if h1_structure != "":
+                st.warning("⏳ 4H aligned, 1H not yet aligned — wait")
+            trade_state = "WAITING"
+            show_footer(trade_state, discipline_score)
+            return
+
+    # ---------- ALIGNMENT PASSED ----------
+    discipline_score += 1.25
+    st.success("✅ 4H → 1H alignment confirmed")
+    st.divider()
+
+
+
+    # =============================
+    # GATE 2 — TARGET
+    # =============================
+    st.subheader("🟦 Gate 2: Target")
 
     space_check = st.radio(
         "Clear space to next DAILY HTF S/R",
@@ -202,12 +326,12 @@ def show_trade_plan():
     )
 
     rr_check = st.radio(
-        "2R or better achievable before the next 1hr to 4hr s/r ?",
+        "2R or better achievable before next HTF level?",
         ["", "Yes", "No"],
         index=0
     )
 
-    htf_rejection = st.radio(
+    htf_reaction = st.radio(
         "Reaction from Daily–Monthly S/R",
         [
             "",
@@ -217,45 +341,22 @@ def show_trade_plan():
         index=0
     )
 
-    if trade_direction == "Long":
-        structure_confirm = st.radio(
-            "4H–1H structure",
-            [
-                "",
-                "Broke above resistance and held",
-                "Still rejecting / ranging"
-            ],
-            index=0
-        )
-        structure_ok = structure_confirm == "Broke above resistance and held"
-    else:
-        structure_confirm = st.radio(
-            "4H–1H structure",
-            [
-                "",
-                "Broke below support and held",
-                "Still rejecting / ranging"
-            ],
-            index=0
-        )
-        structure_ok = structure_confirm == "Broke below support and held"
-
     target_ok = (
         space_check == "Yes – clean space"
         and rr_check == "Yes"
-        and htf_rejection == "Yes – clear rejection / flip"
-        and structure_ok
+        and htf_reaction == "Yes – clear rejection / flip"
     )
 
     if not target_ok:
-        st.warning("⏳ Target & structure not confirmed")
+        st.warning("⏳ Target not clean — expectancy reduced")
         trade_state = "WAITING"
         show_footer(trade_state, discipline_score)
         return
 
     discipline_score += 1
-    st.success("✅ Target & structure confirmed")
+    st.success("✅ Target validated")
     st.divider()
+
 
     # =============================
     # GATE 3 — TIMING & ENTRY
@@ -399,7 +500,7 @@ def show_footer(trade_state, discipline_score, trade_direction=None, daily_bias=
 
     st.divider()
 
-    score_pct = int((discipline_score / 4.5) * 100)
+    score_pct = int((discipline_score / 5.75) * 100)
 
     st.markdown("### 📊 Trade Plan Discipline")
     st.progress(score_pct)
