@@ -1,7 +1,7 @@
 import streamlit as st
 
 def show_risk_calculator():
-    st.title("🛡️ Crypto Perpetual Trading Risk Guard")
+    st.title("🛡️ DTT Position Manager")
 
     # ---------- SIDEBAR ----------
     with st.sidebar:
@@ -29,22 +29,6 @@ def show_risk_calculator():
             ["Aggressive", "Balanced", "Sustainable"]
         )
 
-        st.divider()
-        st.header("Trade Setup")
-
-        stop_loss_pct = st.number_input(
-            "Stop Loss % (from TradingView)",
-            min_value=0.1,
-            value=2.0
-        )
-
-        margin_pct = st.number_input(
-            "% of Balance Used as Margin",
-            min_value=1.0,
-            max_value=100.0,
-            value=50.0
-        )
-
         if account_type == "Prop Firm":
             st.divider()
             st.header("Prop Firm Rules")
@@ -65,23 +49,28 @@ def show_risk_calculator():
         "Balanced": 20,
         "Sustainable": 40
     }
+
     divider = divider_map[risk_mode]
 
     # ---------- PERSONAL ACCOUNT ----------
     if account_type == "Personal Account":
+
         risk_pct_map = {
             "Aggressive": 5,
-            "Balanced": 2,
+            "Balanced": 2.5,
             "Sustainable": 1
         }
 
         risk_pct = risk_pct_map[risk_mode]
         risk_dollars = current_balance * (risk_pct / 100)
 
-        note = "✅ Personal account risk applied based on selected risk mode."
+        remaining_dd = current_balance
+
+        note = "Personal account risk based on selected protection mode"
 
     # ---------- PROP FIRM ----------
     else:
+
         max_dd_dollars = starting_balance * (max_dd_pct / 100)
         daily_dd_dollars = starting_balance * (daily_dd_pct / 100)
 
@@ -89,41 +78,63 @@ def show_risk_calculator():
         remaining_dd = max_dd_dollars - drawdown_used
 
         if remaining_dd <= 0:
-            st.error("❌ Account has breached max drawdown.")
+            st.error("Account breached max drawdown.")
             st.stop()
 
         base_risk = remaining_dd / divider
         daily_cap = daily_dd_dollars * 0.40
 
-        if base_risk > daily_cap:
-            risk_dollars = daily_cap
-            note = "⚠️ Risk capped to protect daily drawdown"
-        else:
-            risk_dollars = base_risk
-            note = "✅ Risk within prop firm limits"
+        risk_dollars = min(base_risk, daily_cap)
 
-    # ---------- LEVERAGE CALC ----------
-    stop_fraction = stop_loss_pct / 100
-    position_size = risk_dollars / stop_fraction
-    margin_used = current_balance * (margin_pct / 100)
-    leverage = position_size / margin_used
+        note = "Risk dynamically adjusted to protect prop firm limits"
+
+    # ---------- SAFETY METRICS ----------
+    losses_remaining = int(remaining_dd / risk_dollars) if risk_dollars > 0 else 0
+    risk_pct_actual = (risk_dollars / current_balance) * 100
 
     # ---------- OUTPUT ----------
-    st.subheader("Risk Output")
+    st.subheader("Recommended Risk")
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.metric("Risk Per Trade ($)", f"${risk_dollars:,.2f}")
-        st.write(note)
+        st.caption("Maximum allowed loss on next trade")
 
     with col2:
-        st.metric("Recommended Leverage", f"{leverage:.2f}x")
+        st.metric("Risk % of Account", f"{risk_pct_actual:.2f}%")
+        st.caption("Capital exposure per trade")
+
+    st.divider()
+
+    col3, col4 = st.columns(2)
+
+    with col3:
+        st.metric(
+            "Remaining Drawdown ($)",
+            f"${remaining_dd:,.2f}"
+        )
+
+    with col4:
+        st.metric(
+            "Losses Remaining",
+            f"{losses_remaining}"
+        )
 
     st.divider()
 
     st.info(
-        "Recalculate after every trade. "
-        "Risk adapts dynamically based on your personal account "
-        "or prop firm risk rules."
+        "Enter this risk amount on your broker.\n\n"
+        "Adjust position size so stop-loss equals this risk."
     )
+# ---------- LEVERAGE GUIDANCE ----------
+    if account_type == "Prop Firm":
+        st.warning(
+            "⚠️ Prop Firm Guidance: Use 10x leverage or less.\n\n"
+            
+        )
+    else:
+        st.caption(
+            "Leverage is flexible on personal accounts. "
+            "Always ensure stop-loss matches the recommended risk amount."
+        )

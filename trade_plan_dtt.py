@@ -114,22 +114,22 @@ def show_trade_plan():
    # =============================
     # GATE 1 — DIRECTION & CONTEXT
     # =============================
-    st.subheader("🟦 Gate 1: Direction & Context")
+    st.subheader("🟦 Direction & Context")
 
     trade_direction = st.radio(
-        "Trade direction",
+        "Trade bias",
         ["", "Long", "Short"],
         index=0
     )
 
     daily_bias = st.radio(
-        "What is the daily structure likely to do next?",
+        "What is the daily structure likely to do next based on it's current market structure?",
         ["", "Continuation (HH / LL)", "Pullback (HL / LH)"],
         index=0
     )
 
     htf_traffic = st.radio(
-        "Higher timeframe traffic (Weekly / Monthly)",
+        "Any HTF weekly/monthly zones that might reject price opposite our bias?",
         [
             "",
             "Aligned – no major zones in the way",
@@ -190,6 +190,55 @@ def show_trade_plan():
     st.success("✅ Direction & context aligned")
     st.divider()
     
+    # =============================
+    # ADDITIONAL HTF VALIDATION (moved from Gate 2)
+    # =============================
+
+    st.markdown("### 🟦 Target:HTF Validation")
+
+    space_check = st.radio(
+        "Clear space to next DAILY HTF S/R",
+        ["", "Yes – clean space", "No – target too close"],
+        index=0,
+        key="gate1_space_check"
+    )
+
+    rr_check = st.radio(
+        "2R or better achievable before next HTF level?",
+        ["", "Yes", "No"],
+        index=0,
+        key="gate1_rr_check"
+    )
+
+    htf_rejection = st.radio(
+        "Rejection from Daily–Monthly S/R",
+        [
+            "",
+            "Yes – clear rejection / flip",
+            "No – no rejection from HTF level"
+        ],
+        index=0,
+        key="gate1_htf_rejection"
+    )
+
+    htf_validation_ok = (
+        space_check == "Yes – clean space"
+        and rr_check == "Yes"
+        and htf_rejection == "Yes – clear rejection / flip"
+    )
+
+    if not htf_validation_ok:
+        st.warning("⏳ HTF validation incomplete — direction not confirmed")
+        trade_state = "WAITING"
+        show_footer(trade_state, discipline_score, trade_direction, daily_bias, daily_location)
+        return
+
+    discipline_score += 1
+
+    st.success("✅ HTF validation confirmed")
+    st.divider()
+
+    
     st.markdown("### 🧩 Important Alignment Check")
     st.caption(
         "Alignment is not nogotiable — it is a strong confirmation that increase the trade odds.\n\n"
@@ -200,24 +249,26 @@ def show_trade_plan():
     # =============================
     # GATE 1.5 — ALIGNMENT (4H → 1H)
     # =============================
-    st.subheader("🟦 Gate 1.5: Alignment")
+    st.subheader("🟦 Timing: Alignment")
 
     st.caption(
         "Alignment is sequential.\n"
-        "Lower timeframe is evaluated only after higher timeframe aligns."
+        "1H is evaluated only after 4H structure aligns with trade direction."
     )
 
-    # ---------- 4H STRUCTURE ----------
+    # ---------- LONG ALIGNMENT ----------
     if trade_direction == "Long":
+
         h4_structure = st.radio(
-            "4H structure",
+            "4H structure alignment",
             [
                 "",
                 "Bullish structure intact (HH / HL)",
                 "Fresh bullish BOS / reclaim above resistance",
                 "Not aligned"
             ],
-            index=0
+            index=0,
+            key="long_h4_structure"
         )
 
         h4_ok = h4_structure in [
@@ -227,47 +278,52 @@ def show_trade_plan():
 
         if not h4_ok:
             if h4_structure != "":
-                st.warning("⏳ 4H structure not aligned — 1H is not evaluated yet")
+                st.warning("⏳ 4H structure not aligned — do not evaluate 1H yet")
             trade_state = "WAITING"
-            show_footer(trade_state, discipline_score)
+            show_footer(trade_state, discipline_score, trade_direction, daily_bias, daily_location)
             return
 
-        # ---------- 1H STRUCTURE (ONLY UNLOCKS AFTER 4H) ----------
+        # 1H unlocks ONLY if 4H aligned
         st.markdown("#### 1H Alignment")
 
         h1_structure = st.radio(
-            "1H structure",
+            "1H structure alignment",
             [
                 "",
                 "Bullish structure intact",
-                "Bullish BOS / reclaim",
+                "Fresh bullish BOS / reclaim",
                 "Not aligned"
             ],
-            index=0
+            index=0,
+            key="long_h1_structure"
         )
 
         h1_ok = h1_structure in [
             "Bullish structure intact",
-            "Bullish BOS / reclaim"
+            "Fresh bullish BOS / reclaim"
         ]
 
         if not h1_ok:
             if h1_structure != "":
                 st.warning("⏳ 4H aligned, 1H not yet aligned — wait")
             trade_state = "WAITING"
-            show_footer(trade_state, discipline_score)
+            show_footer(trade_state, discipline_score, trade_direction, daily_bias, daily_location)
             return
 
-    else:  # ---------- SHORT LOGIC ----------
+
+    # ---------- SHORT ALIGNMENT ----------
+    elif trade_direction == "Short":
+
         h4_structure = st.radio(
-            "4H structure",
+            "4H structure alignment",
             [
                 "",
                 "Bearish structure intact (LL / LH)",
                 "Fresh bearish BOS / loss of support",
                 "Not aligned"
             ],
-            index=0
+            index=0,
+            key="short_h4_structure"
         )
 
         h4_ok = h4_structure in [
@@ -277,105 +333,66 @@ def show_trade_plan():
 
         if not h4_ok:
             if h4_structure != "":
-                st.warning("⏳ 4H structure not aligned — 1H is not evaluated yet")
+                st.warning("⏳ 4H structure not aligned — do not evaluate 1H yet")
             trade_state = "WAITING"
-            show_footer(trade_state, discipline_score)
+            show_footer(trade_state, discipline_score, trade_direction, daily_bias, daily_location)
             return
 
         st.markdown("#### 1H Alignment")
 
         h1_structure = st.radio(
-            "1H structure",
+            "1H structure alignment",
             [
                 "",
                 "Bearish structure intact",
-                "Bearish BOS / loss of support",
+                "Fresh bearish BOS / loss of support",
                 "Not aligned"
             ],
-            index=0
+            index=0,
+            key="short_h1_structure"
         )
 
         h1_ok = h1_structure in [
             "Bearish structure intact",
-            "Bearish BOS / loss of support"
+            "Fresh bearish BOS / loss of support"
         ]
 
         if not h1_ok:
             if h1_structure != "":
                 st.warning("⏳ 4H aligned, 1H not yet aligned — wait")
             trade_state = "WAITING"
-            show_footer(trade_state, discipline_score)
+            show_footer(trade_state, discipline_score, trade_direction, daily_bias, daily_location)
             return
+
 
     # ---------- ALIGNMENT PASSED ----------
     discipline_score += 1.25
-    st.success("✅ 4H → 1H alignment confirmed")
+
+    st.success("✅ 4H and 1H structure aligned with trade direction")
     st.divider()
 
-
-
-    # =============================
-    # GATE 2 — TARGET
-    # =============================
-    st.subheader("🟦 Gate 2: Target")
-
-    space_check = st.radio(
-        "Clear space to next DAILY HTF S/R",
-        ["", "Yes – clean space", "No – target too close"],
-        index=0
-    )
-
-    rr_check = st.radio(
-        "2R or better achievable before next HTF level?",
-        ["", "Yes", "No"],
-        index=0
-    )
-
-    htf_reaction = st.radio(
-        "Reaction from Daily–Monthly S/R",
-        [
-            "",
-            "Yes – clear rejection / flip",
-            "No – reacting from open space"
-        ],
-        index=0
-    )
-
-    target_ok = (
-        space_check == "Yes – clean space"
-        and rr_check == "Yes"
-        and htf_reaction == "Yes – clear rejection / flip"
-    )
-
-    if not target_ok:
-        st.warning("⏳ Target not clean — expectancy reduced")
-        trade_state = "WAITING"
-        show_footer(trade_state, discipline_score)
-        return
-
-    discipline_score += 1
-    st.success("✅ Target validated")
-    st.divider()
-
+  
 
     # =============================
     # GATE 3 — TIMING & ENTRY
     # =============================
-    st.subheader("🟦 Gate 3: Timing & Entry")
+    st.subheader("🟦 Timing:Entry confirmation")
 
-    entry_tf = st.radio(
-        "Entry confirmation timeframe",
-        ["", "15m", "30m", "1H"],
-        index=0
-    )
+    
 
     entry_signal = st.radio(
-        "Entry confirmation criteria",
+        "Entry confirmation criteria(1hr to 15min tf. Sometimes 4hr tf)",
         [
             "",
             "Break of structure + Engulfing candle + Volume increase",
             "Double top/bottom OR H&S/inverse H&S + Engulfing candle + Volume increase"
         ],
+        index=0
+    )
+    
+    entry_tf = st.radio(
+        "Entry confirmation timeframe",
+        ["", "15m", "30m", "1H"],
         index=0
     )
 
@@ -386,12 +403,12 @@ def show_trade_plan():
             "15m structure condition",
             [
                 "",
-                "Aligned and corrected",
-                "Extended / late"
+                "Aligned and at potential LH/HL",
+                "Extended / late at potential LL/HH"
             ],
             index=0
         )
-        if structure_15m != "Aligned and corrected":
+        if structure_15m != "Aligned and at potential LH/HL":
             timing_ok = False
 
     # =============================

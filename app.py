@@ -10,9 +10,9 @@ st.sidebar.title("Navigation")
  
 section = st.sidebar.radio(
     "Go to",
-    ["Risk Calculator", "DTT Trade Plan"] 
+    ["DTT Position Manager", "DTT Trade Plan"] 
  )
-if section == "Risk Calculator":
+if section == "DTT Position Manager":
     show_risk_calculator()
 else: 
     show_trade_plan()
